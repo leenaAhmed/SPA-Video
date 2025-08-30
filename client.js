@@ -1,20 +1,22 @@
 const baseURL = "http://localhost:7777/video-request";
-const videListElm = document.getElementById("listOfRequests");
+const videoListElm = document.getElementById("listOfRequests");
+let sortBy = "newFirst";
+let searchTerm = "";
 
-function renderSingleVidReq(videInfo, isPrepend = false) {
+function renderSingleVidReq(videoInfo, isPrepend = false) {
   const videoReqContainer = document.createElement("div");
-  const { _id, votes } = videInfo;
+  const { _id, votes } = videoInfo;
   videoReqContainer.innerHTML = `
         <div class="card mb-3">
           <div class="card-body d-flex justify-content-between flex-row">
             <div class="d-flex flex-column">
-              <h3>${videInfo.topic_title}</h3>
-              <p class="text-muted mb-2">${videInfo.topic_details}</p>
-             
+              <h3>${videoInfo.topic_title}</h3>
+              <p class="text-muted mb-2">${videoInfo.topic_details}</p>
+
               ${
-                videInfo.expected_result &&
+                videoInfo.expected_result &&
                 `<p class="mb-0 text-muted">
-                <strong>Expected results:</strong> ${videInfo.expected_result}
+                <strong>Expected results:</strong> ${videoInfo.expected_result}
                 </p>`
               }
             
@@ -27,38 +29,38 @@ function renderSingleVidReq(videInfo, isPrepend = false) {
           </div>
           <div class="card-footer d-flex flex-row justify-content-between">
             <div>
-              <span class="text-info">${videInfo.status?.toUpperCase()}</span>
-              &bullet; added by <strong>${videInfo.author_name}</strong> on
+              <span class="text-info">${videoInfo.status?.toUpperCase()}</span>
+              &bullet; added by <strong>${videoInfo.author_name}</strong> on
               <strong>${new Date(
-                videInfo.submit_date
+                videoInfo.submit_date
               ).toLocaleDateString()}</strong>
             </div>
             <div
               class="d-flex justify-content-center flex-column 408ml-auto mr-2"
             >
               <div class="badge badge-success">
-                ${videInfo.target_level}
+                ${videoInfo.target_level}
               </div>
             </div>
           </div>
         </div>`;
 
   if (isPrepend) {
-    videListElm.prepend(videoReqContainer);
+    videoListElm.prepend(videoReqContainer);
   } else {
-    videListElm.append(videoReqContainer);
+    videoListElm.append(videoReqContainer);
   }
 
-  const voteUpsElm = document.getElementById(`vote-ups-${videInfo._id}`);
-  const voteScoreElm = document.getElementById(`score-${videInfo._id}`);
-  const voteDownElm = document.getElementById(`vote-downs-${videInfo._id}`);
+  const voteUpsElm = document.getElementById(`vote-ups-${videoInfo._id}`);
+  const voteScoreElm = document.getElementById(`score-${videoInfo._id}`);
+  const voteDownElm = document.getElementById(`vote-downs-${videoInfo._id}`);
 
   voteUpsElm.addEventListener("click", (e) => {
     fetch(`${baseURL}/vote`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: videInfo._id,
+        id: videoInfo._id,
         vote_type: "ups"
       })
     })
@@ -73,7 +75,7 @@ function renderSingleVidReq(videInfo, isPrepend = false) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: videInfo._id,
+        id: videoInfo._id,
         vote_type: "downs"
       })
     })
@@ -83,33 +85,106 @@ function renderSingleVidReq(videInfo, isPrepend = false) {
       });
   });
 
-  return videListElm;
+  return videoListElm;
 }
 
 
-function loadAllVidReqs(sortBy ="newFirst") {
-     fetch(`${baseURL}?sortBy=${sortBy}`)
+function loadAllVidReqs(sortBy ="newFirst" , searchTerm = "") {
+  fetch(`${baseURL}?sortBy=${sortBy}&searchTerm=${searchTerm}`)
     .then((res) => res.json())
     .then((videoReq) => {
+      videoListElm.innerHTML = "";
       videoReq.forEach((videoItem) => {
         renderSingleVidReq(videoItem);
       });
     });
 }
-// once dcumented loaded and before styleing load
+
+
+function debounce(func , time){
+  let timer;
+
+  return function(...args){
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(()=> func.apply(this, args), time)
+  }
+}
+
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function validateForm(formData){
+   const authorName = formData.get("author_name").trim();
+   const authorEmail = formData.get("author_email").trim();
+   const topicTitle = formData.get("topic_title").trim();
+   const topicDetails = formData.get("topic_details").trim();
+
+   if (!authorName) {
+     document.querySelector('[name=author_name]').classList.add('is-invalid')
+   }
+   if (!authorEmail || !validateEmail(authorEmail)) {
+     document.querySelector('[name=author_email]').classList.add('is-invalid')
+   }
+   if (!topicTitle || topicTitle.length < 20) {
+     document.querySelector('[name=topic_title]').classList.add('is-invalid')
+   }
+   if (!topicDetails) {
+     document.querySelector('[name=topic_details]').classList.add('is-invalid')
+   }
+
+   const formValidity = document.getElementById("sendVideoRequested").querySelectorAll('.is-invalid')
+   console.log(formValidity);
+   if (formValidity.length) {
+     formValidity.forEach(elm => {
+      console.log(elm);
+       elm.addEventListener('input', function() {
+         this.classList.remove('is-invalid');
+       });
+     });
+     return false;
+   }
+   return true;
+}
+
+// once document loaded and before styling load
 document.addEventListener("DOMContentLoaded", () => {
   const videoRequestElm = document.getElementById("sendVideoRequested");
   const sortElms = document.querySelectorAll('[id*=sort_by_]')
+  const searchBy = document.getElementById("video_search");
   loadAllVidReqs()
 
   sortElms.forEach(items => {
-    items.addEventListener('click', e => {
-        loadAllVidReqs('topVotedFirst')
+    items.addEventListener('click', function (e) {
+      e.preventDefault();
+        sortBy = this.querySelector('input').value
+        loadAllVidReqs(sortBy, searchTerm)
+        this.classList.add('active')
+        if (sortBy == "topVotedFirst") {
+          document.getElementById('sort_by_new').classList.remove('active')
+        }else {
+          document.getElementById('sort_by_top').classList.remove('active')
+        }
     })
   })
+
+ 
+  searchBy.addEventListener("input", debounce((e) =>{
+    searchTerm = e.target.value;
+    loadAllVidReqs(sortBy, searchTerm);
+  }, 1500) );
+
+
   videoRequestElm.addEventListener("submit", (e) => {
     e.preventDefault();
     const formData = new FormData(videoRequestElm);
+
+
+    // check validation
+    const isValid = validateForm(formData);
+    if (!isValid) return;
+
     fetch(baseURL, {
       method: "POST",
       body: formData
@@ -119,4 +194,5 @@ document.addEventListener("DOMContentLoaded", () => {
         renderSingleVidReq(data , true);
       });
   });
+
 });
