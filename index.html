@@ -9,42 +9,44 @@
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
     />
   </head>
+
   <body>
     <div class="container my-5">
-      <div class="app-content">
+      <div class="form-login col-6 offset-6 pt-5">
+        <form id="loginUser">
+          <div class="form-group">
+            <label for="author_name">Your name *</label>
+            <input
+              class="form-control"
+              name="author_name"
+              placeholder="Write your name here"
+              type="text"
+              required
+            />
+            <p class="invalid-feedback">this field is required</p>
+          </div>
+          <div class="form-group">
+            <label for="author_email">Your email *</label>
+            <input
+              class="form-control"
+              name="author_email"
+              placeholder="Write your email here"
+              type="email"
+              required
+            />
+            <p class="invalid-feedback">
+              this field is required and should be a valid email
+            </p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            Log in
+          </button>
+        </form>
+      </div>
+      <div class="app-content d-none">
         <div class="normal-user-content">
           <div class="my-5">
             <form id="sendVideoRequested" novalidate>
-              <div class="row">
-                <div class="col-md">
-                  <div class="form-group">
-                    <label for="author_name">Your name *</label>
-                    <input
-                      class="form-control"
-                      name="author_name"
-                      placeholder="Write your name here"
-                      type="text"
-                      required
-                    />
-                    <p class="invalid-feedback">this field is required</p>
-                  </div>
-                </div>
-                <div class="col-md">
-                  <div class="form-group">
-                    <label for="author_email">Your email *</label>
-                    <input
-                      class="form-control"
-                      name="author_email"
-                      placeholder="Write your email here"
-                      type="email"
-                      required
-                    />
-                    <p class="invalid-feedback">
-                      this field is required and should be a valid email
-                    </p>
-                  </div>
-                </div>
-              </div>
               <div class="row">
                 <div class="col-md">
                   <div class="form-group">

@@ -1,7 +1,38 @@
 const baseURL = "http://localhost:7777/video-request";
 const videoListElm = document.getElementById("listOfRequests");
-let sortBy = "newFirst";
-let searchTerm = "";
+
+const state = {
+  sortBy : "newFirst",
+  searchTerm : "",
+  filterBy: "all", 
+  userId: ''
+}
+
+function applyVoteStyle(videoId, videoList, voteType) {
+  if (!voteType) {
+    if (videoList.ups.includes(state.userId)) {
+      voteType ="ups"
+    }else if (videoList.downs.includes(state.userId)) {
+      voteType = "downs"
+    } else {
+      return;
+    }
+  }
+
+  const voteUpsElm = document.getElementById(`vote-ups-${videoId}`);
+  const voteDownElm = document.getElementById(`vote-downs-${videoId}`);
+
+  const voteUpsDirElm = voteType === "ups" ? voteUpsElm : voteDownElm;
+  const voteDownsDirElm = voteType === "ups" ? voteDownElm : voteUpsElm;
+
+  if (videoList[voteType].includes(state.userId)) {
+    voteUpsDirElm.style.opacity = 1;
+    voteDownsDirElm.style.opacity = 0.5;
+  } else {
+    voteDownsDirElm.style.opacity = 1;
+  }
+}
+
 
 function renderSingleVidReq(videoInfo, isPrepend = false) {
   const videoReqContainer = document.createElement("div");
@@ -23,7 +54,7 @@ function renderSingleVidReq(videoInfo, isPrepend = false) {
             </div>
             <div class="d-flex flex-column text-center">
               <a class="btn btn-link" id="vote-ups-${_id}">🔺</a>
-              <h3  id="score-${_id}">${votes?.ups - votes?.downs}</h3>
+              <h3  id="score-${_id}">${votes?.ups.length - votes?.downs.length}</h3>
               <a class="btn btn-link"  id="vote-downs-${_id}">🔻</a>
             </div>
           </div>
@@ -51,51 +82,46 @@ function renderSingleVidReq(videoInfo, isPrepend = false) {
     videoListElm.append(videoReqContainer);
   }
 
-  const voteUpsElm = document.getElementById(`vote-ups-${videoInfo._id}`);
   const voteScoreElm = document.getElementById(`score-${videoInfo._id}`);
-  const voteDownElm = document.getElementById(`vote-downs-${videoInfo._id}`);
 
-  voteUpsElm.addEventListener("click", (e) => {
-    fetch(`${baseURL}/vote`, {
+  const votesElms = document.querySelectorAll(
+      `[id^="vote-"][id$="-${videoInfo._id}"]`
+    );
+  
+  votesElms.forEach(item => {
+    item.addEventListener('click', function (e) {
+      e.preventDefault();
+      const [, vote_type , id ]= e.target.getAttribute('id').split('-');
+      fetch(`${baseURL}/vote`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: videoInfo._id,
-        vote_type: "ups"
+        id,
+        vote_type: vote_type,
+        user_id: state.userId
       })
     })
       .then((blob) => blob.json())
       .then((res) => {
-        voteScoreElm.innerText = res.ups - res.downs;
+        voteScoreElm.innerText = res.ups.length - res.downs.length;
+        applyVoteStyle(id , res, vote_type)
       });
-  });
-
-  voteDownElm.addEventListener("click", (e) => {
-    fetch(`${baseURL}/vote`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: videoInfo._id,
-        vote_type: "downs"
-      })
     })
-      .then((blob) => blob.json())
-      .then((res) => {
-        voteScoreElm.innerText = res.ups - res.downs;
-      });
-  });
-
+  })
+ 
   return videoListElm;
 }
 
 
-function loadAllVidReqs(sortBy ="newFirst" , searchTerm = "") {
-  fetch(`${baseURL}?sortBy=${sortBy}&searchTerm=${searchTerm}`)
+
+function loadAllVidReqs(sortBy ="newFirst", searchTerm = "", filterBy = "all") {
+  fetch(`${baseURL}?sortBy=${sortBy}&searchTerm=${searchTerm}&filterBy=${filterBy}`)
     .then((res) => res.json())
     .then((videoReq) => {
       videoListElm.innerHTML = "";
       videoReq.forEach((videoItem) => {
         renderSingleVidReq(videoItem);
+        applyVoteStyle(videoItem._id, videoItem.votes)
       });
     });
 }
@@ -116,18 +142,12 @@ function validateEmail(email) {
 }
 
 function validateForm(formData){
-   const authorName = formData.get("author_name").trim();
-   const authorEmail = formData.get("author_email").trim();
+
    const topicTitle = formData.get("topic_title").trim();
    const topicDetails = formData.get("topic_details").trim();
 
-   if (!authorName) {
-     document.querySelector('[name=author_name]').classList.add('is-invalid')
-   }
-   if (!authorEmail || !validateEmail(authorEmail)) {
-     document.querySelector('[name=author_email]').classList.add('is-invalid')
-   }
-   if (!topicTitle || topicTitle.length < 20) {
+
+   if (!topicTitle || topicTitle.length > 20) {
      document.querySelector('[name=topic_title]').classList.add('is-invalid')
    }
    if (!topicDetails) {
@@ -135,10 +155,32 @@ function validateForm(formData){
    }
 
    const formValidity = document.getElementById("sendVideoRequested").querySelectorAll('.is-invalid')
-   console.log(formValidity);
    if (formValidity.length) {
      formValidity.forEach(elm => {
-      console.log(elm);
+       elm.addEventListener('input', function() {
+         this.classList.remove('is-invalid');
+       });
+     });
+     return false;
+   }
+   return true;
+}
+
+
+function loginFormVaildation(formData) {
+   const authorName = formData.get("author_name").trim();
+   const authorEmail = formData.get("author_email").trim();
+
+     if (!authorName) {
+     document.querySelector('[name=author_name]').classList.add('is-invalid')
+   }
+   if (!authorEmail || !validateEmail(authorEmail)) {
+     document.querySelector('[name=author_email]').classList.add('is-invalid')
+   }
+
+  const loginFormValidity = document.getElementById("loginUser").querySelectorAll('.is-invalid')
+   if (loginFormValidity.length) {
+     loginFormValidity.forEach(elm => {
        elm.addEventListener('input', function() {
          this.classList.remove('is-invalid');
        });
@@ -153,15 +195,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const videoRequestElm = document.getElementById("sendVideoRequested");
   const sortElms = document.querySelectorAll('[id*=sort_by_]')
   const searchBy = document.getElementById("video_search");
-  loadAllVidReqs()
+
+  const videoRequestContentELm = document.querySelector(".app-content")
+  const userFormLogin = document.querySelector(".form-login")
+  
+  // const searchParams = new URLSearchParams(paramsString);
+   state.userId = localStorage.getItem("current-user")
+  if (state.userId) {
+    loadAllVidReqs(state.sortBy, state.searchTerm, state.filterBy);
+    videoRequestContentELm.classList.remove("d-none");
+    userFormLogin.classList.add("d-none");
+  }
+
 
   sortElms.forEach(items => {
     items.addEventListener('click', function (e) {
       e.preventDefault();
-        sortBy = this.querySelector('input').value
-        loadAllVidReqs(sortBy, searchTerm)
+        state.sortBy = this.querySelector('input').value
+        loadAllVidReqs(state.sortBy, state.searchTerm)
         this.classList.add('active')
-        if (sortBy == "topVotedFirst") {
+        if (state.sortBy == "topVotedFirst") {
           document.getElementById('sort_by_new').classList.remove('active')
         }else {
           document.getElementById('sort_by_top').classList.remove('active')
@@ -171,16 +224,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
  
   searchBy.addEventListener("input", debounce((e) =>{
-    searchTerm = e.target.value;
-    loadAllVidReqs(sortBy, searchTerm);
+    state.searchTerm = e.target.value;
+    loadAllVidReqs(state.sortBy, state.searchTerm);
   }, 1500) );
 
 
   videoRequestElm.addEventListener("submit", (e) => {
     e.preventDefault();
     const formData = new FormData(videoRequestElm);
-
-
+    formData.append("author_id", state.userId)
+   
     // check validation
     const isValid = validateForm(formData);
     if (!isValid) return;
@@ -192,6 +245,23 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((blob) => blob.json())
       .then((data) => {
         renderSingleVidReq(data , true);
+      });
+  });
+
+
+  const loginUserElm = document.getElementById("loginUser");
+
+  loginUserElm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const formData = new FormData(loginUserElm);
+    
+    fetch("http://localhost:7777/users/login", {
+      method: "POST",
+      body: formData
+    })
+      .then((blob) => blob.json()).then((data) => {
+        state.userId = data._id;
+        localStorage.setItem("current-user", data._id)
       });
   });
 

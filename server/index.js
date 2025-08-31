@@ -6,7 +6,7 @@ const VideoRequestData = require('./data/video-requests.data');
 const UserData = require('./data/user.data');
 const cors = require('cors');
 const mongoose = require('./models/mongo.config');
-const multer = require('multer')
+const multer = require('multer');
 
 if (!Object.keys(mongoose).length) return;
 
@@ -14,10 +14,11 @@ app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const upload = multer()
 app.get('/', (req, res) =>
-  res.send("nothing here dude")
+  res.send('Welcome to semicolon academy APIs, use /video-request to get data')
 );
+
+const upload = multer();
 
 app.post('/video-request', upload.none(), async (req, res, next) => {
   const response = await VideoRequestData.createRequest(req.body);
@@ -26,21 +27,25 @@ app.post('/video-request', upload.none(), async (req, res, next) => {
 });
 
 app.get('/video-request', async (req, res, next) => {
-  const {sortBy , searchTerm} = req.query
-  let data ;
+  const { sortBy, searchTerm, filterBy } = req.query;
+  let data;
   if (searchTerm) {
-    data = await VideoRequestData.searchRequests(searchTerm);
-  }else {
-    data = await VideoRequestData.getAllVideoRequests();
+    data = await VideoRequestData.searchRequests(searchTerm, filterBy);
+  } else {
+    data = await VideoRequestData.getAllVideoRequests(filterBy);
   }
-  if (sortBy === "topVotedFirst") {
+
+  if (sortBy === 'topVotedFirst') {
     data = data.sort((prev, next) => {
-      if (prev.votes.ups - prev.votes.downs >= next.votes.ups - next.votes.downs) {
-        return -1
+      if (
+        prev.votes.ups - prev.votes.downs >
+        next.votes.ups - next.votes.downs
+      ) {
+        return -1;
       } else {
-        return 1
+        return 1;
       }
-    })    
+    });
   }
   res.send(data);
   next();
@@ -52,17 +57,22 @@ app.get('/users', async (req, res, next) => {
   next();
 });
 
-app.post('/users/login', async (req, res, next) => {
+app.post('/users/login', upload.none(), async (req, res, next) => {
   const response = await UserData.createUser(req.body);
-  res.redirect(`http://localhost:5500?id=${response._id}`);
+  // res.redirect(`http://localhost:5500?id=${response._id}`);
+  res.send(response)
   next();
 });
 
 app.use(express.json());
 
 app.put('/video-request/vote', async (req, res, next) => {
-  const { id, vote_type } = req.body;
-  const response = await VideoRequestData.updateVoteForRequest(id, vote_type);
+  const { id, vote_type, user_id } = req.body;
+  const response = await VideoRequestData.updateVoteForRequest(
+    id,
+    vote_type,
+    user_id
+  );
   res.send(response.votes);
   next();
 });
