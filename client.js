@@ -9,7 +9,7 @@ const state = {
   isSuperUser: false
 };
 
-function applyVoteStyle(videoId, videoList, voteType) {
+function applyVoteStyle(videoId, videoList,isDisapled, voteType) {
   if (!voteType) {
     if (videoList.ups.includes(state.userId)) {
       voteType = "ups";
@@ -23,7 +23,7 @@ function applyVoteStyle(videoId, videoList, voteType) {
   const voteUpsElm = document.getElementById(`vote-ups-${videoId}`);
   const voteDownElm = document.getElementById(`vote-downs-${videoId}`);
 
-  if (state.isSuperUser) {
+  if (isDisapled) {
     voteUpsElm.style.opacity = 0.5;
     voteUpsElm.style.cursor = "not-allowed";
     voteDownElm.style.opacity = 0.5;
@@ -92,6 +92,15 @@ function renderSingleVidReq(videoInfo, isPrepend = false) {
               }
             
             </div>
+            ${
+              status === 'done'
+                ? `<div class="ml-auto mr-3">
+              <iframe width="240" height="135"
+                src="https://www.youtube.com/embed/${videoInfo.video_ref.link}"
+                frameborder="0" allowfullscreen></iframe>
+            </div>`
+                : ''
+            }
             <div class="d-flex flex-column text-center">
               <a class="btn btn-link" id="vote-ups-${_id}">🔺</a>
               <h3  id="score-${_id}">${
@@ -177,8 +186,16 @@ function renderSingleVidReq(videoInfo, isPrepend = false) {
     `[id^="vote-"][id$="-${videoInfo._id}"]`
   );
 
+
+  if (!state.isSuperUser) {
+      document.querySelectorAll(".card-header").forEach(item => {
+        item.classList.remove('d-flex');
+        item.classList.add("d-none")
+    })
+  }
+
   votesElms.forEach((item) => {
-    if (state.isSuperUser) {
+    if (state.isSuperUser || item.status == "done") {
       return
     }
     item.addEventListener("click", function (e) {
@@ -196,7 +213,7 @@ function renderSingleVidReq(videoInfo, isPrepend = false) {
         .then((blob) => blob.json())
         .then((res) => {
           voteScoreElm.innerText = res.ups.length - res.downs.length;
-          applyVoteStyle(id, res, vote_type);
+          applyVoteStyle(id, res, item.status == "done" ,vote_type);
         });
     });
   });
@@ -217,7 +234,7 @@ function loadAllVidReqs(
       videoListElm.innerHTML = "";
       videoReq.forEach((videoItem) => {
         renderSingleVidReq(videoItem);
-        applyVoteStyle(videoItem._id, videoItem.votes);
+        applyVoteStyle(videoItem._id, videoItem.votes , videoItem.status == "done");
       });
     });
 }
@@ -291,6 +308,7 @@ function changeUserLayout() {
   const userFormLoginElm = document.querySelector(".form-login");
   const mainUserContentElm = document.querySelector(".normal-user-content");
   state.userId = localStorage.getItem("current-user");
+    
   if (state.userId) {
     loadAllVidReqs(state.sortBy, state.searchTerm, state.filterBy);
     videoRequestContentElm.classList.remove("d-none");
@@ -307,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const videoRequestElm = document.getElementById("sendVideoRequested");
   const sortElms = document.querySelectorAll("[id*=sort_by_]");
   const searchBy = document.getElementById("video_search");
-
+  const filterByElms = document.querySelectorAll("[id*=filter_by_]");
   // const searchParams = new URLSearchParams(paramsString);
 
   changeUserLayout();
@@ -316,7 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
     items.addEventListener("click", function (e) {
       e.preventDefault();
       state.sortBy = this.querySelector("input").value;
-      loadAllVidReqs(state.sortBy, state.searchTerm);
+      console.log(state.sortBy)
+      loadAllVidReqs(state.sortBy, state.searchTerm , state.filterBy);
       this.classList.add("active");
       if (state.sortBy == "topVotedFirst") {
         document.getElementById("sort_by_new").classList.remove("active");
@@ -326,11 +345,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+
+  filterByElms.forEach((items) => {
+    items.addEventListener("click", function (e) {
+      e.preventDefault();
+      items.classList.remove("active")
+      this.classList.add("active");
+      state.filterBy = this.querySelector("input").value; 
+      loadAllVidReqs(state.sortBy, state.searchTerm , state.filterBy);
+    });
+  });
+
   searchBy.addEventListener(
     "input",
     debounce((e) => {
       state.searchTerm = e.target.value;
-      loadAllVidReqs(state.sortBy, state.searchTerm);
+      loadAllVidReqs(state.sortBy, state.searchTerm , state.filterBy);
     }, 1500)
   );
 
