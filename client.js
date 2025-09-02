@@ -1,10 +1,8 @@
 import { debounce } from "./debounce.js"
-import { renderSingleVidReq } from './renderSingleVid.js';
+import { changeUserLayout } from "./changeUserLayout.js";
 import API from './api.js';
 import {validateForm} from "./validation.js"
 
-const baseURL = "http://localhost:7777/video-request";
-const supperUserId = "68b46395b7852d09e8b035a7";
 const state = {
   sortBy: "newFirst",
   searchTerm: "",
@@ -13,22 +11,7 @@ const state = {
   isSuperUser: false
 };
 
-function changeUserLayout() {
-  const videoRequestContentElm = document.querySelector(".app-content");
-  const userFormLoginElm = document.querySelector(".form-login");
-  const mainUserContentElm = document.querySelector(".normal-user-content");
-  state.userId = localStorage.getItem("current-user");
-    
-  if (state.userId) {
-    API.loadAllVidReqs(state);
-    videoRequestContentElm.classList.remove("d-none");
-    userFormLoginElm.classList.add("d-none");
-    if (state.userId == supperUserId) {
-      state.isSuperUser = true;
-      mainUserContentElm.classList.add("d-none");
-    }
-  }
-}
+
 
 // once document loaded and before styling load
 document.addEventListener("DOMContentLoaded", () => {
@@ -38,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const filterByElms = document.querySelectorAll("[id*=filter_by_]");
   // const searchParams = new URLSearchParams(paramsString);
 
-  changeUserLayout();
+  changeUserLayout(state);
 
   sortElms.forEach((items) => {
     items.addEventListener("click", function (e) {
@@ -82,15 +65,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // check validation
     const isValid = validateForm(formData);
     if (!isValid) return;
-
-    fetch(baseURL, {
-      method: "POST",
-      body: formData
-    })
-      .then((blob) => blob.json())
-      .then((data) => {
-        renderSingleVidReq(data, state,true);
-      });
+    API.addNewVideo(formData)
+   
   });
 
   const loginUserElm = document.getElementById("loginUser");
@@ -98,16 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loginUserElm.addEventListener("submit", (e) => {
     e.preventDefault();
     const formData = new FormData(loginUserElm);
-
-    fetch("http://localhost:7777/users/login", {
-      method: "POST",
-      body: formData
-    })
-      .then((blob) => blob.json())
-      .then((data) => {
-        state.userId = data._id;
-        localStorage.setItem("current-user", data._id);
-        changeUserLayout();
-      });
+    API.login(formData , state)
   });
 });

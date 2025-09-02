@@ -123,14 +123,9 @@ export function renderSingleVidReq(videoInfo, state, isPrepend = false) {
   });
 
   adminDeleteVideoReqElm.addEventListener('click', (e) => {
-    fetch(baseURL, {
-      method: "DELETE",
-      headers: { 'content-Type': 'application/json' },
-      body: JSON.stringify({ id: videoInfo._id }),
-    }).then(()=> window.location.reload())
+    API.deleteVideoReq(videoInfo._id)
   })
 
-  const voteScoreElm = document.getElementById(`score-${videoInfo._id}`);
 
   const votesElms = document.querySelectorAll(
     `[id^="vote-"][id$="-${videoInfo._id}"]`
@@ -145,8 +140,8 @@ export function renderSingleVidReq(videoInfo, state, isPrepend = false) {
  }
     
   applyVoteStyle(_id, votes, status == "done", state);
-
-
+ 
+  
   votesElms.forEach((item) => {
     if (state.isSuperUser || item.status == "done") {
       return
@@ -154,20 +149,7 @@ export function renderSingleVidReq(videoInfo, state, isPrepend = false) {
     item.addEventListener("click", function (e) {
       e.preventDefault();
       const [, vote_type, id] = e.target.getAttribute("id").split("-");
-      fetch(`${baseURL}/vote`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          vote_type: vote_type,
-          user_id: state.userId
-        })
-      })
-        .then((blob) => blob.json())
-        .then((res) => {
-            voteScoreElm.innerText = res.ups.length - res.downs.length;
-            applyVoteStyle(id, res, status == "done", state ,vote_type);
-        });
+      API.updateVideoVotes(vote_type,id, status,state)
     });
   });
   
