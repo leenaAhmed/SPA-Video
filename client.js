@@ -1,7 +1,7 @@
 import { debounce } from "./debounce.js"
 import { changeUserLayout } from "./changeUserLayout.js";
-import API from './api.js';
 import {validateForm} from "./validation.js"
+import dataService from './dataService.js';
 
 const state = {
   sortBy: "newFirst",
@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const sortElms = document.querySelectorAll("[id*=sort_by_]");
   const searchBy = document.getElementById("video_search");
   const filterByElms = document.querySelectorAll("[id*=filter_by_]");
-  // const searchParams = new URLSearchParams(paramsString);
 
   changeUserLayout(state);
 
@@ -27,10 +26,9 @@ document.addEventListener("DOMContentLoaded", () => {
     items.addEventListener("click", function (e) {
       e.preventDefault();
       state.sortBy = this.querySelector("input").value;
-      console.log(state.sortBy)
-      API.loadAllVidReqs(state);
+      dataService.loadAllVidReqs(state);
       this.classList.add("active");
-      if (state.sortBy == "topVotedFirst") {
+      if (state.sortBy === "topVotedFirst") {
         document.getElementById("sort_by_new").classList.remove("active");
       } else {
         document.getElementById("sort_by_top").classList.remove("active");
@@ -45,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
       items.classList.remove("active")
       this.classList.add("active");
       state.filterBy = this.querySelector("input").value; 
-      API.loadAllVidReqs(state);
+      dataService.loadAllVidReqs(state);
     });
   });
 
@@ -53,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "input",
     debounce((e) => {
       state.searchTerm = e.target.value;
-      API.loadAllVidReqs(state);
+      dataService.loadAllVidReqs(state);
     }, 1500)
   );
 
@@ -65,8 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // check validation
     const isValid = validateForm(formData);
     if (!isValid) return;
-    API.addNewVideo(formData)
-   
+    dataService.addNewVideo(formData , state)
   });
 
   const loginUserElm = document.getElementById("loginUser");
@@ -74,6 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loginUserElm.addEventListener("submit", (e) => {
     e.preventDefault();
     const formData = new FormData(loginUserElm);
-    API.login(formData , state)
+    dataService.login(formData, state);
   });
 });
